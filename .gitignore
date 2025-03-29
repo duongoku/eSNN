@@ -4,3 +4,9 @@ __pycache__
 *.pyc
 .DS_Store
 *.py~
+venv
+wsl_venv
+*epochs*
+.vscode
+*.sqlite
+log.txt

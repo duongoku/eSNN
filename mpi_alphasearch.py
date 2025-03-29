@@ -1,13 +1,14 @@
 from mpi4py import MPI
 from models.model_utils import makeANNModel
 from utils.keras_utils import set_keras_growth
-from utils.storage_utils import createdir,writejson
-from utils.runutils import runalldatasetsMPI,getArgs
+from utils.storage_utils import createdir, writejson
+from utils.runutils import runalldatasetsMPI, getArgs
 from datetime import datetime
-from keras.wrappers.scikit_learn import KerasClassifier
+from scikeras.wrappers import KerasClassifier
 import numpy as np
 import pandas as pd
 import random
+
 
 def main(mpirank, mpisize, mpicomm):
     args = getArgs()
@@ -31,7 +32,7 @@ def main(mpirank, mpisize, mpicomm):
     prefix = "runner"
     if args.prefix is not None:
         prefix = args.prefix
-    rootpath = prefix+datetime.now().strftime('%Y_%m_%d_%H_%M_%S')
+    rootpath = prefix + datetime.now().strftime("%Y_%m_%d_%H_%M_%S")
     if mpirank == 0:
         createdir(rootpath)
         writejson(f"{rootpath}/settings.json", vars(args))
@@ -53,19 +54,28 @@ def main(mpirank, mpisize, mpicomm):
         callbacks = list()
     nresults = list()
     for i in range(0, args.n):
-        dataset_results = runalldatasetsMPI(args, callbacks,
-                                            datasetlist, mpicomm,
-                                            mpirank, rootpath,
-                                            runlist, alpharange,
-                                            n=i, printcvresults=args.cvsummary,
-                                            printcv=args.printcv)
+        dataset_results = runalldatasetsMPI(
+            args,
+            callbacks,
+            datasetlist,
+            mpicomm,
+            mpirank,
+            rootpath,
+            runlist,
+            alpharange,
+            n=i,
+            printcvresults=args.cvsummary,
+            printcv=args.printcv,
+        )
         nresults.append(dataset_results)
 
         if mpirank == 0:
             # plotNAlphaResults(datasetlist, nresults, rootpath)
             writejson(f"{rootpath}/data.json", nresults)
             resdf = pd.DataFrame(results)
-            resdf.to_csv(f"{rootpath}/results_{args.kfold}kfold_{args.epochs}epochs_{args.onehot}onehot.csv")
+            resdf.to_csv(
+                f"{rootpath}/results_{args.kfold}kfold_{args.epochs}epochs_{args.onehot}onehot.csv"
+            )
 
 
 if __name__ == "__main__":

@@ -1,16 +1,16 @@
-
 from models.model_utils import makeANNModel
 from utils.keras_utils import set_keras_growth
 from utils.storage_utils import createdir
-from utils.plotting import  plotNResults
+from utils.plotting import plotNResults
 from datetime import datetime
-from keras.wrappers.scikit_learn import KerasClassifier
-from utils.runutils import runalldatasets,getArgs
+from scikeras.wrappers import KerasClassifier
+from utils.runutils import runalldatasets, getArgs
 import sys
 import numpy as np
 import pandas as pd
 import json
 import random
+
 
 def main():
     args = getArgs()
@@ -37,7 +37,7 @@ def main():
     prefix = "runner"
     if args.prefix is not None:
         prefix = args.prefix
-    rootpath = prefix+datetime.now().strftime('%Y_%m_%d_%H_%M_%S')
+    rootpath = prefix + datetime.now().strftime("%Y_%m_%d_%H_%M_%S")
     createdir(rootpath)
 
     min_retain_losses = list()
@@ -49,22 +49,32 @@ def main():
         callbacks = args.callbacks
     else:
         callbacks = list()
-    alpharange = np.arange(0.10,1.0,0.05)
+    alpharange = np.arange(0.10, 1.0, 0.05)
     nresults = list()
-    for i in range(0,args.n):
-        nresults.append(runalldatasets(args, callbacks,
-                                       datasetlist, rootpath,
-                                       runlist, alphalist=alpharange,
-                                       n=i, printcvresults=args.cvsummary,
-                                       printcv=args.printcv))
+    for i in range(0, args.n):
+        nresults.append(
+            runalldatasets(
+                args,
+                callbacks,
+                datasetlist,
+                rootpath,
+                runlist,
+                alphalist=alpharange,
+                n=i,
+                printcvresults=args.cvsummary,
+                printcv=args.printcv,
+            )
+        )
         writejson(f"{rootpath}/data.json", nresults)
     plotNResults(datasetlist, nresults, rootpath, args.kfold, args.n)
     resdf = pd.DataFrame(nresults)
-    resdf.to_csv(f"{rootpath}/results_{args.kfold}kfold_{args.epochs}epochs_{args.onehot}onehot.csv")
+    resdf.to_csv(
+        f"{rootpath}/results_{args.kfold}kfold_{args.epochs}epochs_{args.onehot}onehot.csv"
+    )
 
 
 def writejson(filename, data):
-    with open(filename, 'w') as outfile:
+    with open(filename, "w") as outfile:
         json.dump(data, outfile)
 
 

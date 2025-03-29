@@ -7,7 +7,9 @@ import json
 __name__ = "dataset_to_cbr"
 
 defaulthost = "localhost:8080"
-def getDoubleAttributeParamterJSON(min,max,solution):
+
+
+def getDoubleAttributeParamterJSON(min, max, solution):
     return """
     {{
     "type": "Double",
@@ -15,7 +17,10 @@ def getDoubleAttributeParamterJSON(min,max,solution):
     "max": "{}",
     "solution": "{}"
     }}
-    """.format(min,max,solution)
+    """.format(
+        min, max, solution
+    )
+
 
 def getStringAttributeParamterJSON(solution):
     return """
@@ -23,40 +28,52 @@ def getStringAttributeParamterJSON(solution):
     "type": "String",
     "solution": "{}"
     }}
-    """.format(solution)
-def getStringAttributeParamterJSON(allowedvalues,solution):
+    """.format(
+        solution
+    )
+
+
+def getStringAttributeParamterJSON(allowedvalues, solution):
     return """
     {{
     "type": "Symbol",
     "allowedValues": [{}],
     "solution": "{}"
     }}
-    """.format(allowedvalues,solution)
-def getDoubleParameters(imin,imax,solution):
-    return {"attributeJSON":getDoubleAttributeParamterJSON(imin,imax,solution)}
+    """.format(
+        allowedvalues, solution
+    )
+
+
+def getDoubleParameters(imin, imax, solution):
+    return {"attributeJSON": getDoubleAttributeParamterJSON(imin, imax, solution)}
+
 
 def getStringParameters(solution):
-    return {"attributeJSON":getStringAttributeParamterJSON(solution)}
+    return {"attributeJSON": getStringAttributeParamterJSON(solution)}
+
 
 def findColFromValue(colmap, value):
-    for key,dict in colmap.items():
+    for key, dict in colmap.items():
         if "possible_values" in dict and value in dict["possible_values"]:
             return key
     return None
+
+
 def findDatasetInfo(datasetInfo, name):
     for row in datasetInfo["cols"]:
         if row["name"] is name:
             return row
     return None
 
-def fromDatasetToCBR(dataset,sklearndataset,colmap):
-    #print(dataset.df)
 
-    #sklearndataset, colmap = fromDataSetToSKLearn(dataset)
+def fromDatasetToCBR(dataset, sklearndataset, colmap):
+    # print(dataset.df)
+
+    # sklearndataset, colmap = fromDataSetToSKLearn(dataset)
 
     datadf = sklearndataset.getDataFrame()
     sklearncols = list(datadf)
-
 
     cs = Concepts(defaulthost)
     c = cs.addConcept(dataset.name)
@@ -67,7 +84,7 @@ def fromDatasetToCBR(dataset,sklearndataset,colmap):
     #     #print("coltype: {}".format(col["type"]))
     #     if colname in nominalcols:
     #
-    #     elif (col["type"] is "str" or "nominal") and (isinstance(col["type"],str)):
+    #     elif (col["type"] == "str" or "nominal") and (isinstance(col["type"],str)):
     #         #print("creating new str attribute from coltype: {}".format(col["type"]))
     #         c.addAttribute(colname,getStringParameters())
     #     else:
@@ -90,29 +107,26 @@ def fromDatasetToCBR(dataset,sklearndataset,colmap):
     #         c.addAttribute(colname,
     #                        getDoubleParameters(cmin, cmax))
     for col in sklearncols:
-        if col not in colmap: #it has to be a binarized new-column
-            #print(f"sending paramstring: {paramstr}")
-            originalColName = findColFromValue(colmap,col)
+        if col not in colmap:  # it has to be a binarized new-column
+            # print(f"sending paramstring: {paramstr}")
+            originalColName = findColFromValue(colmap, col)
             datasetInfoRow = findDatasetInfo(dataset.datasetInfo, originalColName)
             classCol = datasetInfoRow["class"]
             paramstr = getDoubleAttributeParamterJSON(0, 1, classCol)
-            c.addAttribute(col,paramstr)
-        elif colmap[col]["type"] is "number":
-              #cmin = dataset.getMinForCol(col)
-              #cmax = dataset.getMaxForCol(col)
-              datasetInfoRow = findDatasetInfo(dataset.datasetInfo, col)
-              classCol = datasetInfoRow["class"]
-              c.addAttribute(col,
-                             getDoubleAttributeParamterJSON(0, 1.0, classCol))
-        elif col in colmap and colmap[col]["type"] is "nominal":
+            c.addAttribute(col, paramstr)
+        elif colmap[col]["type"] == "number":
+            # cmin = dataset.getMinForCol(col)
+            # cmax = dataset.getMaxForCol(col)
+            datasetInfoRow = findDatasetInfo(dataset.datasetInfo, col)
+            classCol = datasetInfoRow["class"]
+            c.addAttribute(col, getDoubleAttributeParamterJSON(0, 1.0, classCol))
+        elif col in colmap and colmap[col]["type"] == "nominal":
             cmin = datadf[col].min()
             cmax = datadf[col].max()
             datasetInfoRow = findDatasetInfo(dataset.datasetInfo, col)
             classCol = datasetInfoRow["class"]
             paramstr = getDoubleAttributeParamterJSON(cmin, cmax, classCol)
             c.addAttribute(col, paramstr)
-
-
 
     # create the instances that fit into the model
     prefix = c.name
@@ -136,4 +150,3 @@ def fromDatasetToCBR(dataset,sklearndataset,colmap):
     #    c.addInstance(case["caseID"],json.dumps(case),"mydefaultCB")
     c.addInstances(datadict, "mydefaultCB")
     return cs, c
-
