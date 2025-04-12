@@ -15,7 +15,7 @@ import random
 def main():
     args = getArgs()
 
-    if args.seed is None:
+    if args.seed == None:
         seed = random.randrange(sys.maxsize)
         args.seed = seed
         print(f"generating new random seed: {seed}")

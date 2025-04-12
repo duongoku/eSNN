@@ -106,7 +106,7 @@ def chopra(
     alpha=0.8,
     makeTrainingData=None,
 ):
-    if makeTrainingData is None:
+    if makeTrainingData == None:
         makeTrainingData = makeSmartNData
 
     model, embeddingmodel = make_chopra_model(X, Y, networklayers, regression)

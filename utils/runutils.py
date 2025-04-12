@@ -1,44 +1,45 @@
+import argparse
+import hashlib
+import sys
 import time
-import tensorflow as tf
+
 import numpy as np
+import tensorflow as tf
 
 from dataset.dataset import Dataset
-from models.type2 import makeGabelArch
-from models.type4 import (
-    makeDualArch,
-    makeEndToEndDualArch,
-    makeEndToEndDualArchShared,
-    dees_resnet,
-)
-from models.type3 import makeNormalArch, chopra, make_chopra_model
-from models.esnn import esnn, make_eSNN_model
-from models.eval import (
-    eval_normal_ann_l2,
-    eval_dual_ann,
-    eval_gabel_ann,
-    eval_chopra_ann,
-)
 from dataset.dataset_to_sklearn import fromDataSetToSKLearn
-from models.rprop import RProp
-from models.type1 import sim_def_lin, sim_def_nonlin
 from dataset.makeTrainingData import (
     makeDualSharedArchData,
     makeGabelTrainingData,
     makeNData,
-    makeSmartNData,
     makeSemiBig,
+    makeSmartNData,
 )
+from models.esnn import esnn, make_eSNN_model
+from models.eval import (
+    eval_chopra_ann,
+    eval_dual_ann,
+    eval_gabel_ann,
+    eval_normal_ann_l2,
+)
+from models.rprop import RProp
+from models.type1 import sim_def_lin, sim_def_nonlin
+from models.type2 import makeGabelArch
+from models.type3 import chopra, make_chopra_model, makeNormalArch
+from models.type4 import (
+    dees_resnet,
+    makeDualArch,
+    makeEndToEndDualArch,
+    makeEndToEndDualArchShared,
+)
+from utils.KerasCallbacks import callbackdict
 
 # from utils.plotting import plotResults3
-from utils.storage_utils import writejson, createdir
-from utils.KerasCallbacks import callbackdict
-import argparse
-import sys
-import hashlib
+from utils.storage_utils import createdir, writejson
 
 
 def splitNoEscapes(string, char):
-    if string is None or len(string) < 2:
+    if string == None or len(string) < 2:
         return [string]
     sections = string.split(char)
     sections = [i + (char if i[-1] == "\\" else "") for i in sections]
@@ -126,6 +127,7 @@ def parseMethod(methodstring):
     else:
         runnerdict = rundict[methodstring]
         methodname = methodstring
+        runner_split = None
     if runner_split:
         runnerdict = rundict[runner_split[0]]
         if len(runner_split) > 1:
@@ -313,7 +315,7 @@ def getArgs():
         parser.print_help()
         sys.exit(1)
 
-    if args.datasets is None or args.methods is None:
+    if args.datasets == None or args.methods == None:
         print(
             "you must supply a list of datasets and a list of methods to run this program"
         )
@@ -327,7 +329,7 @@ def getArgs():
         else:
             newlist = [args.hiddenlayers, []]
         args.hiddenlayers = newlist
-    elif args.hiddenlayers is None and args.g_layers is not None:
+    elif args.hiddenlayers == None and args.g_layers is not None:
         args.hiddenlayers = [args.g_layers[0], args.c_layers[0]]
     else:
         print(
@@ -688,6 +690,7 @@ def iteration(
             rootdir=rootpath,
             alpha=alpha,
             makeTrainingData=makeTrainingDataFunc,
+            n=n,
         )
 
         min_loss = hist.history["loss"][len(hist.history["loss"]) - 1]

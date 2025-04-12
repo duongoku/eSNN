@@ -136,7 +136,7 @@ def getDatasetInfo(
     colmap={},
 ):
     for col in datasetInfo["cols"]:
-        if col["class"] is True:
+        if col["class"] == True:
             classcols.append(col)
 
     # here we need to do some checking for datasets with two classes (such as
@@ -163,7 +163,7 @@ def getDatasetInfo(
                 c["name"]
                 for c in datasetInfo["cols"]
                 if c["type"] != "skip"
-                and c["class"] is not True
+                and c["class"] != True
                 and c["name"] not in dropcols
             ]
         )
@@ -172,7 +172,7 @@ def getDatasetInfo(
             [
                 c["name"]
                 for c in datasetInfo["cols"]
-                if c["type"] != "skip" and c["class"] is not True
+                if c["type"] != "skip" and c["class"] != True
             ]
         )
 
@@ -203,7 +203,7 @@ def getDatasetInfo(
             if isinstance(value, (int, float, complex)) and math.isnan(value):
                 foundNaN = True
 
-        if (coltype == "nominal" or coltype == "ordinal") and colclass is False:
+        if (coltype == "nominal" or coltype == "ordinal") and colclass == False:
             # nominal, make use of onehotencoding
             if multilabelbin:
                 possible_values = []
@@ -217,7 +217,9 @@ def getDatasetInfo(
             columns_to_binarize.append(datasetInfo["cols"][i]["name"])
             if foundNaN:
                 df[colname].fillna("nan", inplace=True)
-        elif (coltype is np.float32 or coltype is np.int32) and colclass is False:
+        elif (
+            coltype == np.float32 or coltype == np.int32 or coltype == "np.float64"
+        ) and colclass == False:
             # int or float, normalize between 0 and 1
             columns_to_scale.append(datasetInfo["cols"][i]["name"])
             datadict["type"] = "number"
@@ -225,10 +227,10 @@ def getDatasetInfo(
                 df[colname].fillna(0, inplace=True)
         # binary, do nothing
         # if target column is not set yet find it
-        if colclass is True:
+        if colclass == True:
             targetcols.append(datasetInfo["cols"][i]["name"])
             targetcolindexes.append(i)
-            if coltype is np.float32 or coltype is np.int32:
+            if coltype == np.float32 or coltype == np.int32 or coltype == "np.float64":
                 isregression = True
         else:
             feature_names.append(colname)
@@ -254,7 +256,11 @@ def getDatasetInfo(
     for targetcolindex, targetcolname in zip(targetcolindexes, targetcols):
         datadict = {}
         targetcoltype = datasetInfo["cols"][targetcolindex]["type"]
-        if targetcoltype is np.int32 or targetcoltype is np.float32:
+        if (
+            targetcoltype == np.int32
+            or targetcoltype == np.float32
+            or targetcoltype == "np.float64"
+        ):
             df.loc[:, (targetcolname)] = df.loc[:, (targetcolname)].apply(pd.to_numeric)
             targetmapperlist.append(([targetcolname], MinMaxScaler()))
             datadict["type"] = "number"

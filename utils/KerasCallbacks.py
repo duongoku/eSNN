@@ -1,8 +1,8 @@
 import os
 import warnings
-import tensorflow as tf
-import numpy as np
 
+import numpy as np
+import tensorflow as tf
 
 sim_nn_results = {
     "bal": 0.093,
@@ -50,7 +50,7 @@ sim_nn_results = {
 
 
 class CustomModelCheckPoint(tf.keras.callbacks.Callback):
-    def __init__(self, filepath, rootdir, **kargs):
+    def __init__(self, filepath, rootdir, n, **kargs):
         super(CustomModelCheckPoint, self).__init__(**kargs)
         self.epoch_accuracy = {}  # loss at given epoch
         self.filepath = filepath
@@ -58,6 +58,8 @@ class CustomModelCheckPoint(tf.keras.callbacks.Callback):
         self.epoch_loss = {}  # accuracy at given epoch
         self.bestloss = 1
         self.lastmodelfile = ""
+        self.lastfullmodelfile = ""
+        self.n = n
 
     def on_epoch_begin(self, epoch, logs={}):
         # Things done on beginning of epoch.
@@ -70,23 +72,24 @@ class CustomModelCheckPoint(tf.keras.callbacks.Callback):
         self.epoch_loss[epoch] = thisloss
         if thisloss < self.bestloss:
             self.bestloss = thisloss
-            # remove the last model file if it exists..
+
+            # Remove the last model file if it exists..
             if self.lastmodelfile != "":
                 os.remove(self.lastmodelfile)
-            # save the model
+            if self.lastfullmodelfile != "":
+                os.remove(self.lastfullmodelfile)
 
-            self.model.save_weights(
-                self.folder
-                + "/"
-                + self.filepath
-                + "name-of-model-%d.weights.h5" % epoch
+            # Save the full model
+            full_model_output_file = f"{self.folder}/run_{self.n}_{self.filepath}_full_model_epoch_{epoch}.keras"
+            self.model.save(filepath=full_model_output_file)
+            self.lastfullmodelfile = full_model_output_file
+
+            # Save the model's weights
+            model_weights_file = (
+                self.folder + "/" + self.filepath + "-%d.weights.h5" % epoch
             )
-            self.lastmodelfile = (
-                self.folder
-                + "/"
-                + self.filepath
-                + "name-of-model-%d.weights.h5" % epoch
-            )
+            self.model.save_weights(model_weights_file)
+            self.lastmodelfile = model_weights_file
 
 
 class RetainCallBack(tf.keras.callbacks.Callback):
@@ -250,7 +253,7 @@ class Overfitting_callback(tf.keras.callbacks.Callback):
         # test = np.hstack((o1, o2))
         train_loss = logs.get(self.monitor[0])
         val_loss = logs.get(self.monitor[1])
-        if val_loss is None:
+        if val_loss == None:
             warnings.warn(
                 "Overfitting conditioned on metric `%s` "
                 "which is not available. Available metrics are: %s"

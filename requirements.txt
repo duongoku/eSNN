@@ -1,8 +1,12 @@
 requests_cache
 requests
-tensorflow[and-cuda]
+tensorflow
 pandas
 scikit-learn
 matplotlib
 scikeras
 openpyxl
+xlrd
+seaborn
+pygam
+pandas

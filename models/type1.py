@@ -57,7 +57,7 @@ def global_sim_def(v1, v2, maximums, minimums, anynominal, nominallist):
             res = res + local_sim_n_def(v1[i], v2[i], maximums[i], minimums[i])
     else:
         for i in range(0, v1.shape[0]):
-            if nominallist[i] is True:
+            if nominallist[i] == True:
                 res = res + local_sim_s_def(v1[i], v2[i])
             else:
                 res = res + local_sim_n_def(v1[i], v2[i], maximums[i], minimums[i])
@@ -66,6 +66,8 @@ def global_sim_def(v1, v2, maximums, minimums, anynominal, nominallist):
 
 
 def local_sim_n_def(v1, v2, d_max, d_min):
+    if d_max == d_min:
+        return 1.0 if v1 == v2 else 0.0  # TODO: not sure what to put if d_max == d_min
     return 1 - (abs(v1 - v2) / (d_max - d_min))
 
 
@@ -95,6 +97,8 @@ def sim_nonlin(q, c, paramL, max_val, min_val):
 
 
 def f(value, exponent, diff):
+    if diff == 0:
+        return 1.0 if value == 0 else 0.0  # TODO: not sure what to put if diff == 0
     return myfilter(np.power(value / diff + 1.0, exponent))
 
 
@@ -120,7 +124,7 @@ def global_sim_nonlin(v1, v2, maximums, minimums, anynominal, nominallist, param
             res = res + sim_nonlin(v1[i], v2[i], params[i], maximums[i], minimums[i])
     else:
         for i in range(0, v1.shape[0]):
-            if nominallist[i] is True:
+            if nominallist[i] == True:
                 res = res + local_sim_s_def(v1[i], v2[i])
             else:
                 res = res + sim_nonlin(

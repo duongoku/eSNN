@@ -10,3 +10,7 @@ wsl_venv
 .vscode
 *.sqlite
 log.txt
+test*.py
+output/
+gam_explanations/
+dataset/*/

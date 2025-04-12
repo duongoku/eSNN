@@ -1,155 +1,181 @@
-from keras.optimizers import Optimizer
-from keras import backend as K
-import numpy
+import tensorflow as tf
 
 __name__ = "rprop"
-"""
-Both of these implementations are fixed versions of code found on
-https://stackoverflow.com/questions/43768411/implementing-the-rprop-algorithm-in-keras/45849212#45849212
-So credits go to the stackoverflow community and the specific members that authored the questions and answers.
 
-"""
+# Original implemetation: https://stackoverflow.com/questions/43768411/implementing-the-rprop-algorithm-in-keras/45849212#45849212
 
-
-class RProp(Optimizer):
+class RProp(tf.keras.optimizers.Optimizer):
     def __init__(
         self,
+        learning_rate=0.01,
         init_alpha=1e-3,
         scale_up=1.2,
         scale_down=0.5,
         min_alpha=1e-6,
         max_alpha=50.0,
+        name="RProp",
         **kwargs
     ):
-        super(RProp, self).__init__(**kwargs)
-        self.init_alpha = K.variable(init_alpha, name="init_alpha")
-        self.scale_up = K.variable(scale_up, name="scale_up")
-        self.scale_down = K.variable(scale_down, name="scale_down")
-        self.min_alpha = K.variable(min_alpha, name="min_alpha")
-        self.max_alpha = K.variable(max_alpha, name="max_alpha")
-
-    def get_updates(self, params, loss):
-        grads = self.get_gradients(loss, params)
-        shapes = [K.get_variable_shape(p) for p in params]
-        alphas = [K.variable(numpy.ones(shape) * self.init_alpha) for shape in shapes]
-        old_grads = [K.zeros(shape) for shape in shapes]
-        prev_weight_deltas = [K.zeros(shape) for shape in shapes]
-        self.weights = alphas + old_grads
-        self.updates = []
-
-        for param, grad, old_grad, prev_weight_delta, alpha in zip(
-            params, grads, old_grads, prev_weight_deltas, alphas
-        ):
-            # equation 4
-            new_alpha = K.switch(
-                K.greater(grad * old_grad, 0),
-                K.minimum(alpha * self.scale_up, self.max_alpha),
-                K.switch(
-                    K.less(grad * old_grad, 0),
-                    K.maximum(alpha * self.scale_down, self.min_alpha),
-                    alpha,
-                ),
+        super().__init__(name=name, learning_rate=learning_rate, **kwargs)
+        self.init_alpha = init_alpha
+        self.scale_up = scale_up
+        self.scale_down = scale_down
+        self.min_alpha = min_alpha
+        self.max_alpha = max_alpha
+        
+    def build(self, variables):
+        super().build(variables)
+        self.alphas = []
+        self.old_grads = []
+        self.prev_weight_deltas = []
+        for variable in variables:
+            self.alphas.append(
+                self.add_variable_from_reference(
+                    reference_variable=variable,
+                    name="alpha",
+                    initializer=tf.keras.initializers.Constant(self.init_alpha),
+                )
             )
-
-            # equation 5
-            new_delta = K.switch(
-                K.greater(grad, 0),
-                -new_alpha,
-                K.switch(K.less(grad, 0), new_alpha, K.zeros_like(new_alpha)),
+            self.old_grads.append(
+                self.add_variable_from_reference(
+                    reference_variable=variable,
+                    name="old_grad",
+                    initializer=tf.keras.initializers.Zeros(),
+                )
             )
-
-            # equation 7
-            weight_delta = K.switch(
-                K.less(grad * old_grad, 0), -prev_weight_delta, new_delta
+            self.prev_weight_deltas.append(
+                self.add_variable_from_reference(
+                    reference_variable=variable,
+                    name="prev_weight_delta",
+                    initializer=tf.keras.initializers.Zeros(),
+                )
             )
+            
+    def update_step(self, gradient, variable, learning_rate):
+        index = self._get_variable_index(variable)
+        alpha = self.alphas[index]
+        old_grad = self.old_grads[index]
+        prev_weight_delta = self.prev_weight_deltas[index]
 
-            # equation 6
-            new_param = param + weight_delta
+        grad_old_grad = gradient * old_grad
 
-            # reset gradient_{t-1} to 0 if gradient sign changed (so that we do
-            # not "double punish", see paragraph after equation 7)
-            grad = K.switch(K.less(grad * old_grad, 0), K.zeros_like(grad), grad)
+        new_alpha = tf.where(
+            grad_old_grad > 0,
+            tf.minimum(alpha * self.scale_up, self.max_alpha),
+            tf.where(
+                grad_old_grad < 0,
+                tf.maximum(alpha * self.scale_down, self.min_alpha),
+                alpha,
+            ),
+        )
 
-            # Apply constraints
-            # if param in constraints:
-            #    c = constraints[param]
-            #    new_param = c(new_param)
+        new_delta = tf.where(
+            gradient > 0,
+            -new_alpha,
+            tf.where(gradient < 0, new_alpha, tf.zeros_like(gradient)),
+        )
 
-            self.updates.append(K.update(param, new_param))
-            self.updates.append(K.update(alpha, new_alpha))
-            self.updates.append(K.update(old_grad, grad))
-            self.updates.append(K.update(prev_weight_delta, weight_delta))
+        weight_delta = tf.where(
+            grad_old_grad < 0,
+            -prev_weight_delta,
+            new_delta,
+        )
 
-        return self.updates
+        variable.assign_add(weight_delta)
+
+        new_old_grad = tf.where(grad_old_grad < 0, tf.zeros_like(gradient), gradient)
+        old_grad.assign(new_old_grad)
+
+        alpha.assign(new_alpha)
+
+        prev_weight_delta.assign(weight_delta)
 
     def get_config(self):
         config = {
-            "init_alpha": float(K.get_value(self.init_alpha)),
-            "scale_up": float(K.get_value(self.scale_up)),
-            "scale_down": float(K.get_value(self.scale_down)),
-            "min_alpha": float(K.get_value(self.min_alpha)),
-            "max_alpha": float(K.get_value(self.max_alpha)),
+            "init_alpha": self.init_alpha,
+            "scale_up": self.scale_up,
+            "scale_down": self.scale_down,
+            "min_alpha": self.min_alpha,
+            "max_alpha": self.max_alpha,
         }
-        base_config = super(RProp, self).get_config()
-        return dict(list(base_config.items()) + list(config.items()))
+        base_config = super().get_config()
+        return {**base_config, **config}
 
 
-class iRprop_(Optimizer):
+class iRprop_(tf.keras.optimizers.Optimizer):
     def __init__(
         self,
+        learning_rate=0.01,
         init_alpha=0.01,
         scale_up=1.2,
         scale_down=0.5,
         min_alpha=0.00001,
         max_alpha=50.0,
+        name="iRprop_",
         **kwargs
     ):
-        super(iRprop_, self).__init__(**kwargs)
-        self.init_alpha = K.variable(init_alpha, name="init_alpha")
-        self.scale_up = K.variable(scale_up, name="scale_up")
-        self.scale_down = K.variable(scale_down, name="scale_down")
-        self.min_alpha = K.variable(min_alpha, name="min_alpha")
-        self.max_alpha = K.variable(max_alpha, name="max_alpha")
-
-    def get_updates(self, params, loss):
-        grads = self.get_gradients(loss, params)
-        shapes = [K.get_variable_shape(p) for p in params]
-        alphas = [K.variable(K.ones(shape) * self.init_alpha) for shape in shapes]
-        old_grads = [K.zeros(shape) for shape in shapes]
-        self.weights = alphas + old_grads
-        self.updates = []
-
-        for p, grad, old_grad, alpha in zip(params, grads, old_grads, alphas):
-            grad = K.sign(grad)
-            new_alpha = K.switch(
-                K.greater(grad * old_grad, 0),
-                K.minimum(alpha * self.scale_up, self.max_alpha),
-                K.switch(
-                    K.less(grad * old_grad, 0),
-                    K.maximum(alpha * self.scale_down, self.min_alpha),
-                    alpha,
-                ),
+        super().__init__(name=name, learning_rate=learning_rate, **kwargs)
+        self.init_alpha = init_alpha
+        self.scale_up = scale_up
+        self.scale_down = scale_down
+        self.min_alpha = min_alpha
+        self.max_alpha = max_alpha
+        
+    def build(self, variables):
+        super().build(variables)
+        self.alphas = []
+        self.old_grads = []
+        for variable in variables:
+            self.alphas.append(
+                self.add_variable_from_reference(
+                    reference_variable=variable,
+                    name="alpha",
+                    initializer=tf.keras.initializers.Constant(self.init_alpha),
+                )
             )
+            self.old_grads.append(
+                self.add_variable_from_reference(
+                    reference_variable=variable,
+                    name="old_grad",
+                    initializer=tf.keras.initializers.Zeros(),
+                )
+            )
+            
+    def update_step(self, gradient, variable, learning_rate):
+        index = self._get_variable_index(variable)
+        alpha = self.alphas[index]
+        old_grad = self.old_grads[index]
 
-            grad = K.switch(K.less(grad * old_grad, 0), K.zeros_like(grad), grad)
-            new_p = p - grad * new_alpha
+        grad_sign = tf.sign(gradient)
 
-            # Apply constraints.
-            if getattr(p, "constraint", None) is not None:
-                new_p = p.constraint(new_p)
-            self.updates.append(K.update(p, new_p))
-            self.updates.append(K.update(alpha, new_alpha))
-            self.updates.append(K.update(old_grad, grad))
+        grad_old_grad = grad_sign * old_grad
+        new_alpha = tf.where(
+            grad_old_grad > 0,
+            tf.minimum(alpha * self.scale_up, self.max_alpha),
+            tf.where(
+                grad_old_grad < 0,
+                tf.maximum(alpha * self.scale_down, self.min_alpha),
+                alpha,
+            ),
+        )
 
-        return self.updates
+        new_grad_sign = tf.where(grad_old_grad < 0, 0.0, grad_sign)
+
+        weight_delta = - new_grad_sign * new_alpha
+
+        variable.assign_add(weight_delta)
+
+        alpha.assign(new_alpha)
+
+        old_grad.assign(grad_sign)
 
     def get_config(self):
         config = {
-            "init_alpha": float(K.get_value(self.init_alpha)),
-            "scale_up": float(K.get_value(self.scale_up)),
-            "scale_down": float(K.get_value(self.scale_down)),
-            "min_alpha": float(K.get_value(self.min_alpha)),
-            "max_alpha": float(K.get_value(self.max_alpha)),
+            "init_alpha": self.init_alpha,
+            "scale_up": self.scale_up,
+            "scale_down": self.scale_down,
+            "min_alpha": self.min_alpha,
+            "max_alpha": self.max_alpha,
         }
-        base_config = super(iRprop_, self).get_config()
-        return dict(list(base_config.items()) + list(config.items()))
+        base_config = super().get_config()
+        return {**base_config, **config}

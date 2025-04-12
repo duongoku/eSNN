@@ -62,7 +62,7 @@ def findColFromValue(colmap, value):
 
 def findDatasetInfo(datasetInfo, name):
     for row in datasetInfo["cols"]:
-        if row["name"] is name:
+        if row["name"] == name:
             return row
     return None
 
@@ -97,7 +97,7 @@ def fromDatasetToCBR(dataset, sklearndataset, colmap):
     #     #print("columns \"{}\"".format(dataset.df.columns))
     #     #print("coltype: {}".format(col["type"]))
     #
-    #     if value_list["type"] is  "nominal":
+    #     if value_list["type"] == "nominal":
     #         #print("creating new str attribute from coltype: {}".format(col["type"]))
     #         c.addAttribute(colname,getStringParameters())
     #     else:

@@ -27,7 +27,7 @@ def makeGabelArch(
     makeTrainingData=None,
 ):
     # model = makeGabelClassifierModel(X.shape[1]*2, networklayers=[13,13]) #always 2 x 13 hidden layers
-    if makeTrainingData is None:
+    if makeTrainingData == None:
         makeTrainingData = makeGabelTrainingData
 
     input1 = tf.keras.Input(shape=(X.shape[1] * 2,), dtype="float32")
@@ -76,7 +76,7 @@ def makeGabelArch(
         run_callbacks.append(cbo)
         ret_callbacks[callback] = cbo
     history = model.fit(
-        gabel_features,
+        [gabel_features],
         gabel_targets,
         validation_split=val_split,
         shuffle=shuffle,

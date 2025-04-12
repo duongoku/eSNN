@@ -1,7 +1,6 @@
 import tensorflow as tf
 import pandas as pd
 import numpy as np
-import collections
 import pickle
 import os
 import json
@@ -14,6 +13,13 @@ from sklearn import preprocessing
 requests_cache.install_cache("bmm_uci_ml")
 from io import StringIO
 from dataset.binarizer import MyLabelBinarizer
+
+try:
+    import collections.abc as collections
+except ImportError:
+    import collections
+
+ROOT_DATA_DIR = "."
 
 __name__ = "dataset"
 """
@@ -542,12 +548,23 @@ datamap = {
     },
 }
 
+for root, dirs, files in os.walk(ROOT_DATA_DIR):
+    for file in files:
+        if file.endswith(".json"):
+            datamap_from_file = json.load(open(os.path.join(root, file), "r"))
+            datamap.update(datamap_from_file)
+            print(f"Loaded {list(datamap_from_file.keys())[0]} dataset from {file}")
+
 
 # inspiration from https://github.com/pydata/pandas-datareader/blob/master/pandas_datareader/base.py
 # and https://github.com/davidastephens/pandas-finance/blob/master/pandas_finance/api.py
 
 
 def safeGetDF(url):
+
+    if os.path.isfile(url):
+        return url
+
     httpsession = requests_cache.CachedSession(
         cache_name="bmm-uciml-cache", backend="sqlite"
     )
@@ -620,10 +637,9 @@ class Dataset:
         # print(dtypedict)
 
         try:
-            # url = self.datasetInfo["backupUrl"]
-            r = requests.get(url)
-            # r.raise_for_status()
-        except requests.exceptions.RequestException as e:  # This is the correct syntax
+            if not os.path.isfile(url):
+                requests.get(url)
+        except requests.exceptions.RequestException as e:
             print(f"{e}")
         except requests.exceptions.HTTPError as httperror:
             print(f"got error for dataset {key}")
@@ -640,7 +656,7 @@ class Dataset:
                     names=colnames,
                     dtype=dtypedict,
                     usecols=self.datasetInfo["usecols"],
-                    engine="openpyxl",
+                    engine="xlrd",
                 )
             else:
                 possibledictofdf = pd.read_excel(
@@ -649,15 +665,15 @@ class Dataset:
                     sheet_name=sheet_names,
                     names=colnames,
                     dtype=dtypedict,
-                    engine="openpyxl",
+                    engine="xlrd",
                 )
             if isinstance(sheet_names, collections.Sequence) and not isinstance(
                 sheet_names, str
             ):
                 firstdf = possibledictofdf[sheet_names[0]]
                 for sheet in sheet_names:
-                    if sheet is not sheet_names[0]:
-                        firstdf.append(possibledictofdf[sheet])
+                    if sheet != sheet_names[0]:
+                        firstdf = pd.concat([firstdf, possibledictofdf[sheet]], axis=0)
                 self.df = firstdf[colnames]
             else:
                 self.df = possibledictofdf[colnames]

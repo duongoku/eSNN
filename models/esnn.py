@@ -1,12 +1,11 @@
 import tensorflow as tf
-
 from dataset.dataset_to_sklearn import *
+from dataset.makeTrainingData import makeSmartNData
 from models.eval import eval_dual_ann
-
 from models.utils import normalizeBatchSize
 from utils.keras_utils import keras_sqrt_diff
-from dataset.makeTrainingData import makeSmartNData
-from utils.KerasCallbacks import callbackdict, CustomModelCheckPoint
+from utils.KerasCallbacks import CustomModelCheckPoint, callbackdict
+from utils.plotting_utils import plot_training_progress
 
 
 def esnn(
@@ -29,22 +28,17 @@ def esnn(
     rootdir="rootdir",
     alpha=0.8,
     makeTrainingData=None,
+    n=0,
 ):
 
-    if makeTrainingData is None:
+    if makeTrainingData == None:
         makeTrainingData = makeSmartNData
 
     model, embeddingmodel = make_eSNN_model(X, Y, networklayers, regression)
-    # model.summary()
 
-    # val_features, val_targets, val_Y1, val_Y2 = makeSmartNData(o_X, o_Y, regression)
+    batch_size = normalizeBatchSize(X, batch_size)
 
-    if all([optimizer is not None, optimizer["batch_size"] is not None]):
-        batch_size = X.shape[0]
-    else:
-        batch_size = normalizeBatchSize(X, batch_size)
-
-    if regression is not True:
+    if regression != True:
         loss_dict = {  #'dist_output': 'mean_squared_error',
             "dist_output": "binary_crossentropy",
             "class1_output": "categorical_crossentropy",
@@ -104,9 +98,9 @@ def esnn(
         run_callbacks.append(cbo)
         ret_callbacks[callback] = cbo
     filepath = rootdir + "saved-model-{epoch:02d}-{accuracy:.2f}.hdf5"
-    run_callbacks.append(CustomModelCheckPoint(filepath="esnn", rootdir=rootdir))
+    run_callbacks.append(CustomModelCheckPoint(filepath="esnn", rootdir=rootdir, n=n))
 
-    test = np.hstack((features, targets))
+    # test = np.hstack((features, targets))
     batch_size = features.shape[0]
     history = model.fit(
         training_data,
@@ -116,8 +110,10 @@ def esnn(
         batch_size=batch_size,
         verbose=0,
         callbacks=run_callbacks,
-    )  # ,
-    # validation_data=[val_training_data, val_target_data])
+    )
+
+    figure_file = plot_training_progress(history, datasetname, rootdir)
+    print(f"Training progress saved to {figure_file}")
 
     return model, history, ret_callbacks, embeddingmodel
 
@@ -127,8 +123,6 @@ def make_eSNN_model(X, Y, networklayers, regression=False):
     c_layers = networklayers
 
     if isinstance(networklayers[0], list):
-        # this means user has specified different layers
-        # for g and c..
         g_layers = networklayers[0]
         c_layers = networklayers[1]
 
@@ -158,9 +152,11 @@ def make_eSNN_model(X, Y, networklayers, regression=False):
     for networklayer in c_layers:
         o_t = tf.keras.layers.Dense(int(networklayer), activation="relu")(o_t)
 
-    # make class output from G(x) to get two more signal sources
-    inner_output = None
-    if regression is True:  # regression or 1 output classification
+    # Similarity output
+    output = tf.keras.layers.Dense(1, activation="sigmoid", name="dist_output")(o_t)
+
+    # Make class output from G(x) to get two more signal sources
+    if regression == True:  # Regression or 1 output classification
         inner_output1 = tf.keras.layers.Dense(
             Y.shape[1],
             activation="linear",
@@ -181,8 +177,7 @@ def make_eSNN_model(X, Y, networklayers, regression=False):
             Y.shape[1], activation="softmax", name="class2_output"
         )
 
-    output = tf.keras.layers.Dense(1, activation="sigmoid", name="dist_output")(o_t)
-
+    # Classification task output
     output1 = inner_output1(t1)
     output2 = inner_output2(t2)
 

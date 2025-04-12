@@ -50,7 +50,7 @@ def makeDualArch(
         networklayers=networklayers,
     )
 
-    if makeTrainingData is None:
+    if makeTrainingData == None:
         makeTrainingData = makeGabelTrainingData
 
     history = model.fit(
@@ -179,7 +179,7 @@ def makeEndToEndDualArch(
         activation_function="relu",
     )
 
-    if makeTrainingData is None:
+    if makeTrainingData == None:
         makeTrainingData = makeDualSharedArchData
 
     # history = model.fit(X, Y, validation_split=val_split,
@@ -298,7 +298,7 @@ def makeEndToEndDualArchShared(
     input1 = tf.keras.Input(shape=(X.shape[1],), dtype="float32")
     input2 = tf.keras.Input(shape=(X.shape[1],), dtype="float32")
 
-    if makeTrainingData is None:
+    if makeTrainingData == None:
         makeTrainingData = makeDualSharedArchData
 
     # make G(x)
@@ -329,7 +329,7 @@ def makeEndToEndDualArchShared(
 
     # make class output from G(x) to get two more signal sources
     inner_output = None
-    if regression is True:  # regression or 1 output classification
+    if regression == True:  # regression or 1 output classification
         inner_output1 = tf.keras.layers.Dense(
             Y.shape[1],
             activation="linear",
@@ -366,7 +366,7 @@ def makeEndToEndDualArchShared(
         batch_size = features.shape[0]
     else:
         batch_size = normalizeBatchSize(X, batch_size)
-    if regression is not True:
+    if regression != True:
         loss_dict = {
             "dist_output": "binary_crossentropy",
             "class1_output": "categorical_crossentropy",
@@ -463,7 +463,7 @@ def dees_resnet(
     makeTrainingData=None,
 ):
 
-    if makeTrainingData is None:
+    if makeTrainingData == None:
         makeTrainingData = makeDualSharedArchData
 
     input1 = tf.keras.Input(shape=(X.shape[1],), dtype="float32")
@@ -497,7 +497,7 @@ def dees_resnet(
         o_t = tf.keras.layers.Dense(int(networklayer), activation="relu")(o_t)
 
     inner_output = None
-    if regression is True:  # regression or 1 output classification
+    if regression == True:  # regression or 1 output classification
         inner_output1 = tf.keras.layers.Dense(
             Y.shape[1],
             activation="linear",
@@ -534,7 +534,7 @@ def dees_resnet(
         batch_size = features.shape[0]
     else:
         batch_size = normalizeBatchSize(X, batch_size)
-    if regression is not True:
+    if regression != True:
         loss_dict = {
             "dist_output": "binary_crossentropy",
             "class1_output": "categorical_crossentropy",

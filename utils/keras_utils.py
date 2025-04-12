@@ -4,9 +4,10 @@ from __future__ import absolute_import, division, print_function
 this file contains helper code for setting keras parameters
 """
 
-import tensorflow as tf
-import numpy as np
 import os
+
+import numpy as np
+import tensorflow as tf
 
 
 def get_model_memory_usage(batch_size, model):
@@ -14,7 +15,7 @@ def get_model_memory_usage(batch_size, model):
     for l in model.layers:
         single_layer_mem = 1
         for s in l.output_shape:
-            if s is None:
+            if s == None:
                 continue
             single_layer_mem *= s
         shapes_mem_count += single_layer_mem
@@ -61,14 +62,19 @@ def set_keras_parms(threads=0, gpu_mem=2 * 1024, gpu_fraction=0.3):
         tf.config.threading.set_inter_op_parallelism_threads(threads)
 
 
-def set_keras_growth(gpunumber=0):
-    os.environ["CUDA_VISIBLE_DEVICES"] = str(gpunumber)
+def set_keras_growth(gpunumbers: str = "0"):
+    os.environ["CUDA_VISIBLE_DEVICES"] = gpunumbers
+    if "," in gpunumbers:
+        gpunumbers = map(int, gpunumbers.split(","))
+    else:
+        gpunumbers = [int(gpunumbers)]
 
     gpus = tf.config.list_physical_devices("GPU")
     if gpus:
         try:
-            tf.config.experimental.set_memory_growth(gpus[gpunumber], True)
-            print(f"GPU {gpunumber} memory growth enabled")
+            for gpunumber in gpunumbers:
+                tf.config.experimental.set_memory_growth(gpus[gpunumber], True)
+                print(f"GPU {gpunumbers} memory growth enabled")
         except RuntimeError as e:
             print(f"Error enabling GPU memory growth: {e}")
 

@@ -35,7 +35,7 @@ def makeNormalModelLayers(
     # making the last layer, this has to be different depending on if this
     # network is doing regression or classification
     output = None
-    if regression is True:  # regression or 1 output classification
+    if regression == True:  # regression or 1 output classification
         output = tf.keras.layers.Dense(
             n,
             activation="linear",
@@ -78,7 +78,7 @@ def makeAndCompileNormalModel(
         strategy = tf.distribute.MirroredStrategy()
         with strategy.scope():
             model = tf.keras.Model(inputs=input, outputs=output)
-            if regression is True:
+            if regression == True:
                 model.compile(
                     loss="mean_squared_error", optimizer="adam", metrics=["accuracy"]
                 )
@@ -90,7 +90,7 @@ def makeAndCompileNormalModel(
                 )
     else:
         model = tf.keras.Model(inputs=input, outputs=output)
-        if regression is True:
+        if regression == True:
             model.compile(
                 loss="mean_squared_error", optimizer="adam", metrics=["accuracy"]
             )
@@ -126,19 +126,6 @@ def makeGabelClassifierModel(inp, networklayers):
     )
     model.compile(loss="mean_squared_error", optimizer=RProp(), metrics=["accuracy"])
     return model
-
-
-def savemodel(model, modelfile):
-    # serialize model to JSON
-    model_json = model.to_json()
-    with open(modelfile + ".json", "w") as json_file:
-        json_file.write(model_json)
-        # serialize weights to HDF5
-        model.save_weights(modelfile + ".weights.h5")
-        print(
-            "saved model object to %s and weights to %s "
-            % (modelfile + ".json", modelfile + ".weights.h5")
-        )
 
 
 def makeANNModel(

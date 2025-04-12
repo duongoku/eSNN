@@ -9,7 +9,7 @@ __name__ = "irpropm"
 
 
 def shared_zeros(shape, dtype=tf.float32, name="", n=None):
-    shape = shape if n is None else (n,) + tuple(shape)
+    shape = shape if n == None else (n,) + tuple(shape)
     return tf.Variable(tf.zeros(shape, dtype=dtype), name=name)
 
 

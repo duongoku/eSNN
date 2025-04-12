@@ -37,7 +37,7 @@ def shuffle_weights(model, weights=None):
     :param list(ndarray) weights: The model's weights will be replaced by a random permutation of these weights.
       If `None`, permute the model's current weights.
     """
-    if weights is None:
+    if weights == None:
         weights = model.get_weights()
     weights = [np.random.permutation(w.flat).reshape(w.shape) for w in weights]
     # Faster, but less random: only permutes along the first dimension

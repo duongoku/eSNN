@@ -1,8 +1,8 @@
-import tensorflow as tf
+import math
 import numpy as np
 import pandas as pd
-import math
 import random
+import tensorflow as tf
 
 import scipy.spatial.distance as scdist
 
@@ -248,7 +248,7 @@ def _eval_dual_ann(
     # Sequential is just used by gabel..
     if isinstance(model, tf.keras.Sequential) or gabel:
         pred_vec = model.predict(
-            combinedata[0 : combinedata.shape[0], 0 : train_data.shape[1] * 2],
+            [combinedata[0 : combinedata.shape[0], 0 : train_data.shape[1] * 2]],
             batch_size=batch_size,
         )
     elif isinstance(model, tf.keras.Model):
@@ -312,7 +312,7 @@ def _eval_dual_ann(
         err = evalSortedsubset(
             sortedsubset, index, train_data.shape[1], test_target.shape[1]
         )
-        if err is False:
+        if err == False:
             heh += 1
             # print(f"boop {heh}")
         errvec.append(err)
@@ -337,7 +337,7 @@ def topKey(dict):
 
 
 def targetequal(targets, index1, index2):
-    if targets[index1] is targets[index2]:
+    if targets[index1] == targets[index2]:
         return True
     return False
 
